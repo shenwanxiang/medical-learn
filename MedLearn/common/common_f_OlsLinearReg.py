@@ -6,12 +6,14 @@ Created on Sun Oct 14 18:05:45 2018
 @author: charleshen
 """
 
-from MedLearn.utils.pandastool import ParseDFtypes
-from MedLearn.utils.modelbase import ModelBase
-from MedLearn.dataset import load_MedExp
+from ..utils.pandastool import ParseDFtypes
+from ..utils.modelbase import ModelBase
+from ..dataset import load_MedExp
+from ..docs import common_doc
 from io import StringIO
 
 import statsmodels.api as sm
+import os
 import statsmodels.formula.api as smf
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
@@ -21,7 +23,9 @@ import coloredlogs,logging
 coloredlogs.install()
 
 
-
+filename = os.path.basename(__file__)
+ABSTRACT = '''相关分析用于研究定量数据之间的关系情况,包括是否有关系,以及关系紧密程度等.此分析方法通常用于回归分析之前;相关分析与回归分析的逻辑关系为:先有相关关系,才有可能有回归关系。'''
+DOC = common_doc.DOC(filename=filename)
 
 class OlsLinearReg(ModelBase):
 
@@ -61,25 +65,34 @@ class OlsLinearReg(ModelBase):
                  model_limiation = None,
                  ):
         
-        self._id_ = model_id
-        self._limitation_ = model_limiation
+        self._name_ = '回归分析方法'
+
 
         
         
     def get_info(self):
         
-        return {'id': self._id, 
-                'name': self._name, 
-                'description': self._description,
-                'limited':self._limitation
+        return  {'id': self._id,
+                'name': self._name,
+
+                'info': self._description,
+                'abstract': ABSTRACT,
+                'doc': DOC,
+                'limited': '如果方法为‘pearson’，需要输入的每列的数据都是数值型数据，不能是字符串或者object',
+                'args': [{"id": "x", "name": "分析项x", 'type': 'dataframe', 'requirement': '每个元素必须包含在df的列中'},
+                         {"id": "y", "name": "分析项y", 'type': 'dataframe', 'requirement': '每个元素必须包含在df的列中'}],
+
+                'extra_args': []
                 }
     
-    
     def run(self, 
-            dfx, 
-            dfy): 
+            df,
+            x,
+            y 
+            ): 
 
-        
+            dfx = df[x]
+            dfy = df[y]
             dfy = dfy.reset_index(drop=True)
             dfx = dfx.reset_index(drop=True)            
         

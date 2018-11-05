@@ -19,5 +19,5 @@ from .common_j_TTestPair import TTestPair
 from .common_k_NormalityTest import NormalityTest
 from .common_l_NonparametricStat import NonparametricStat
 from .common_m_HOVTest import HOVTest
-from MedLearn.dataset import load_MedExp
-from MedLearn.docs import getDoc
+from ..dataset import load_MedExp
+from ..docs import common_doc as docs

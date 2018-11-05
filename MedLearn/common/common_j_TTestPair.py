@@ -24,14 +24,20 @@ tsy(定类) #固定
 
 from scipy.stats import ttest_rel
 import pandas as pd
+import os
 
-from MedLearn.utils.pandastool import ParseDFtypes
-from MedLearn.utils.modelbase import ModelBase
-from MedLearn.dataset import load_MedExp
+from ..utils.pandastool import ParseDFtypes
+from ..utils.modelbase import ModelBase
+from ..dataset import load_MedExp
+from ..docs import common_doc
 
 
 import coloredlogs,logging
 coloredlogs.install()
+
+filename = os.path.basename(__file__)
+ABSTRACT = '''相关分析用于研究定量数据之间的关系情况,包括是否有关系,以及关系紧密程度等.此分析方法通常用于回归分析之前;相关分析与回归分析的逻辑关系为:先有相关关系,才有可能有回归关系。'''
+DOC = common_doc.DOC(filename=filename)
 
 
 
@@ -55,7 +61,7 @@ class TTestPair(ModelBase):
         dfx: pandas DataFrame
             需要每列的数据都是数字型数据，不能是字符串或者object
         
-        dfy: pandas Series
+        dfy: pandas DataFrame
              需要每列的数据都是数字型数据，不能是字符串或者object,并且和dfx的列数一样
             
             
@@ -72,23 +78,31 @@ class TTestPair(ModelBase):
                  model_limiation = None,
                  ):
         
-        self._id_ = model_id
-        self._limitation_ = model_limiation
+        self._name_ = '配对T检验'
+
 
         
         
     def get_info(self):
         
-        return {'id': self._id, 
-                'name': self._name, 
-                'description': self._description,
-                'limited':self._limitation
+        return {'id': self._id,
+                'name': self._name,
+
+                'info': self._description,
+                'abstract': ABSTRACT,
+                'doc': DOC,
+                'limited': '如果方法为‘pearson’，需要输入的每列的数据都是数值型数据，不能是字符串或者object',
+                'args': [{"id": "x", "name": "分析项x", 'type': 'dataframe', 'requirement': '每个元素必须包含在df的列中'},
+                         {"id": "y", "name": "分析项y", 'type': 'dataframe', 'requirement': '每个元素必须包含在df的列中'}],
+                'extra_args': []
                 }
+
     
     
-    def run(self, 
-            dfx, 
-            dfy): 
+    def run(self,df,x,y,extra_args={}): 
+
+            dfx = df[x]
+            dfy = df[y]
 
         
             
@@ -99,7 +113,7 @@ class TTestPair(ModelBase):
             if  xl != yl:
                 logging.error('the length of input X:%s is not equal the length of Y: %s ! ' % (xl,yl))
                 msg['error'] = '输入的dfx的长度为:%s 不等于输入的dfy的长度: %s  ' % (xl,yl)
-                return  {'result':pd.DataFrame(), 'msg':msg}
+                return  {'result':'', 'msg':msg},pd.DataFrame()
             
         
             x_numer_cols, x_cate_cols = ParseDFtypes(dfx)
@@ -109,13 +123,13 @@ class TTestPair(ModelBase):
             if (x_cate_cols !=[]) or (y_cate_cols != []):
                 logging.error('input x or y has non-numeric data, please check your input data')
                 msg['error'] = '输入的dfx或者dfy所有的列都不是数值型数据，请检查输入数据'
-                return  {'result':pd.DataFrame(), 'msg':msg}            
+                return  {'result':'', 'msg':msg},pd.DataFrame()            
             
             
             if  len(x_numer_cols) != len(y_numer_cols):
                 logging.error('the number of columns for input X:%s is not equal Y: %s ! ' % (x_numer_cols,y_numer_cols))
                 msg['error'] = '输入的dfx的可用的列为:%s ，这和输入的dfy可用的列: %s 在列数数量上不相等 ' % (x_numer_cols,y_numer_cols)
-                return  {'result':pd.DataFrame(), 'msg':msg}            
+                return  {'result':'', 'msg':msg},pd.DataFrame()            
             
         
             
@@ -148,8 +162,13 @@ class TTestPair(ModelBase):
                 res = pd.concat(rr)
                     
                 res['p-值'] = res['p-值'].apply(lambda x:'{:.5f}'.format(x))
-                
-                return {'result':res, 'msg':msg}
+                dfres = res
+                return {'tables': [{'table_json': dfres.reset_index().to_json(orient='index'),
+                            'table_html': dfres.to_html(),
+                            'table_info': '生成的字段之间的相关系数和p-值表',
+                            'chart': ['heatmap', 'line', 'bar']}],
+                            'conf': self.get_info(),
+                            'msg': msg}, [{'table_df': dfres, 'label': '生成的字段之间的相关系数和p-值表'}]
             
         
         

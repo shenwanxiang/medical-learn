@@ -6,16 +6,23 @@ Created on Sun Oct 21 20:06:27 2018
 @author: charleshen
 """
 
-from scipy.stats import mannwhitneyu, kruskal
-from MedLearn.utils.pandastool import ParseDFtypes, isCategory, isSeries
-from MedLearn.utils.modelbase import ModelBase
-from MedLearn.dataset import load_MedExp
+import logging
+import os
 
+import coloredlogs
 import pandas as pd
-import coloredlogs,logging
+from scipy.stats import kruskal, mannwhitneyu
+
+from ..dataset import load_MedExp
+from ..docs import common_doc
+from ..utils.modelbase import ModelBase
+from ..utils.pandastool import ParseDFtypes, isCategory, isSeries
+
 coloredlogs.install()
 
-
+filename = os.path.basename(__file__)
+ABSTRACT = '''相关分析用于研究定量数据之间的关系情况,包括是否有关系,以及关系紧密程度等.此分析方法通常用于回归分析之前;相关分析与回归分析的逻辑关系为:先有相关关系,才有可能有回归关系。'''
+DOC = common_doc.DOC(filename=filename)
 
 class NonparametricStat(ModelBase):
 
@@ -56,20 +63,30 @@ class NonparametricStat(ModelBase):
         
     def get_info(self):
         
-        return {'id': self._id, 
-                'args':[{'id':'dfx','name':'分析项X','type':pd.DataFrame}, 
-                        {'id':'tsy','name':'分析项Y','type':pd.Series}],
-                'name': self._name, 
-                'description': self._description,
-                'limited':'tsy需要一列的数据都是分类型数据,dfx需要每列的数据都是数字型数据，不能是字符串或者object'
+        return {'id': self._id,
+                'name': self._name,
+
+                'info': self._description,
+                'abstract': ABSTRACT,
+                'doc': DOC,
+                'limited': '如果方法为‘pearson’，需要输入的每列的数据都是数值型数据，不能是字符串或者object',
+                'args': [{"id": "x", "name": "分析项x", 'type': 'dataframe', 'requirement': '每个元素必须包含在df的列中'},
+                         {"id": "y", "name": "分析项y", 'type': 'deries', 'requirement': '每个元素必须包含在df的列中'}],
+
+                'extra_args': []
                 }
+
     
     
     def run(self, 
-            dfx, 
-            tsy): 
+            df,
+            x,
+            y,
+            extra_args={} 
+            ): 
 
-        
+            dfx = df[x]
+            tsy = df[y[0]]
             
             tsy = tsy.reset_index(drop=True)
             dfx = dfx.reset_index(drop=True)
@@ -81,14 +98,14 @@ class NonparametricStat(ModelBase):
             if  xl != yl:
                 logging.error('the length of input X:%s is not equal the length of Y: %s ! ' % (xl,yl))
                 msg['error'] = 'the length of input X:%s is not equal the length of Y: %s ! ' % (xl,yl)
-                return  {'result':pd.DataFrame(), 'msg':msg}            
+                return  {'result':'', 'msg':msg},pd.DataFrame()            
             
             
             if not isSeries(tsy) or not isCategory(tsy):
                 logging.error('input tsy is not a pandas Series or not a category data!')
                 msg['error'] = 'input tsy is not a pandas Series or not a category data!'
                 
-                return  {'result':pd.DataFrame(), 'msg':msg}
+                return  {'result':'', 'msg':msg},pd.DataFrame()
                 
             else:
                 x_numer_cols, x_cate_cols = ParseDFtypes(dfx)
@@ -97,7 +114,7 @@ class NonparametricStat(ModelBase):
                 if x_numer_cols ==[]:
                     logging.error('All input dfx are no numeric columns, Please check your input dfx data!')
                     msg['error'] = 'All input dfx are no numeric columns, Please check your input dfx data!'
-                    return  {'result':pd.DataFrame(), 'msg':msg}
+                    return  {'result':'', 'msg':msg},pd.DataFrame()
                 
                 
                 else:
@@ -153,9 +170,14 @@ class NonparametricStat(ModelBase):
 
                     res = m1.join(pd.concat(rs))
                     
-    
-                    return {'result':res, 'msg':msg}
-        
+                    dfres = res   
+                    return {'tables': [{'table_json': dfres.reset_index().to_json(orient='index'),
+                            'table_html': dfres.to_html(),
+                            'table_info': '生成的字段之间的相关系数和p-值表',
+                            'chart': ['heatmap', 'line', 'bar']}],
+                            'conf': self.get_info(),
+                            'msg': msg}, [{'table_df': dfres, 'label': '生成的字段之间的相关系数和p-值表'}]
+                    
         
         
             
