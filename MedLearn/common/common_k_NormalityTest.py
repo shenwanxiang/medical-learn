@@ -26,17 +26,23 @@ Created on Thu Oct 18 23:29:10 2018
 
 
 
+import logging
+import os
+
+import coloredlogs
 import pandas as pd
-from scipy.stats import kstest,shapiro
+from scipy.stats import kstest, shapiro
 
+from ..dataset import load_MedExp
+from ..docs import common_doc
+from ..utils.modelbase import ModelBase
+from ..utils.pandastool import ParseDFtypes
 
-from MedLearn.utils.pandastool import ParseDFtypes
-from MedLearn.utils.modelbase import ModelBase
-from MedLearn.dataset import load_MedExp
-
-
-import coloredlogs,logging
 coloredlogs.install()
+
+filename = os.path.basename(__file__)
+ABSTRACT = '''相关分析用于研究定量数据之间的关系情况,包括是否有关系,以及关系紧密程度等.此分析方法通常用于回归分析之前;相关分析与回归分析的逻辑关系为:先有相关关系,才有可能有回归关系。'''
+DOC = common_doc.DOC(filename=filename)
 
 
 
@@ -74,25 +80,34 @@ class NormalityTest(ModelBase):
                  model_limiation = None,
                  ):
         
-        self._id_ = model_id
-        self._limitation_ = model_limiation
+        self._name_ = '正态性检验'
+
 
         
         
     def get_info(self):
         
-        return {'id': self._id, 
-                'name': self._name, 
-                'description': self._description,
-                'limited':self._limitation
+        return {'id': self._id,
+                'name': self._name,
+
+                'info': self._description,
+                'abstract': ABSTRACT,
+                'doc': DOC,
+                'limited': '如果方法为‘pearson’，需要输入的每列的数据都是数值型数据，不能是字符串或者object',
+                'args': [{"id": "x", "name": "分析项x", 'type': 'dataframe', 'requirement': '每个元素必须包含在df的列中'}],
+
+                'extra_args': []
                 }
     
     
-    def run(self, 
-            dfx): 
+    def run(self,
+            df,
+            x,
+            y,
+            extra_args={}): 
 
         
-            
+            dfx = df[x]
             msg = {}
             
             x_numer_cols, x_cate_cols = ParseDFtypes(dfx)
@@ -101,7 +116,7 @@ class NormalityTest(ModelBase):
             if x_numer_cols ==[]:
                 logging.error('All input dfx are no numeric columns, Please check your input dfx data!')
                 msg['error'] = '输入的dfx所有的列都不是数值型数据，请检查输入数据'
-                return  {'result':pd.DataFrame(), 'msg':msg}
+                return  {'result':'', 'msg':msg},pd.DataFrame()
             
             
             else:
@@ -132,8 +147,13 @@ class NormalityTest(ModelBase):
                 res['KS检验：p值'] = res['KS检验：p值'].apply(lambda x:'{:.5f}'.format(x))
                 res['Shapro-Wilk检验：p-值'] = res['Shapro-Wilk检验：p-值'].apply(lambda x:'{:.5f}'.format(x))
                 
-                
-                return {'result':res.round(5), 'msg':msg}
+                dfres = res.round(5)
+                return {'tables': [{'table_json': dfres.reset_index().to_json(orient='index'),
+                            'table_html': dfres.to_html(),
+                            'table_info': '生成的字段之间的相关系数和p-值表',
+                            'chart': ['heatmap', 'line', 'bar']}],
+                            'conf': self.get_info(),
+                            'msg': msg}, [{'table_df': dfres, 'label': '生成的字段之间的相关系数和p-值表'}]
                     
                    
             
@@ -162,5 +182,3 @@ if __name__ == '__main__':
     
     #获取返回的字典
     dict_res.get('result')            
-            
-            

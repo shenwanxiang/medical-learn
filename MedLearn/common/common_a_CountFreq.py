@@ -6,24 +6,26 @@ Created on Mon Oct  1 21:03:09 2018
 @author: charleshen
 """
 
-from MedLearn.dataset import load_MedExp
-from MedLearn.utils.modelbase import ModelBase
-from MedLearn.utils.pandastool import ParseDFtypes
+import logging
+import os
 
-
+import coloredlogs
 import pandas as pd
 
-import coloredlogs,logging
+from ..dataset import load_MedExp
+from ..docs import common_doc
+from ..utils.modelbase import ModelBase
+from ..utils.pandastool import ParseDFtypes
+
 coloredlogs.install()
 
 #import json
 #import numpy as np
 
+filename = os.path.basename(__file__)  
+ABSTRACT = '''相关分析用于研究定量数据之间的关系情况,包括是否有关系,以及关系紧密程度等.此分析方法通常用于回归分析之前;相关分析与回归分析的逻辑关系为:先有相关关系,才有可能有回归关系。'''
+DOC = common_doc.DOC(filename=filename)
 
-import os
-from MedLearn.docs import getDoc
-docfilename = os.path.basename(__file__).replace('.py','.md')
-DOC = getDoc(docfilename)  
 
         
 #dataset: https://vincentarelbundock.github.io/Rdatasets/csv/Ecdat/MedExp.csv
@@ -60,11 +62,13 @@ class CountFreq(ModelBase):
     
     
     def __init__(self, 
+                 model_id = None, 
+                 model_limiation = None,
                  bins = 10
                  ):
         
-        self.bins = bins
-        self._name_ = '频数分析'
+       self._name_ = '频数分析方法'
+
 
         
         
@@ -72,18 +76,31 @@ class CountFreq(ModelBase):
         
         return {'id': self._id, 
                 'name': self._name, 
-                'description': self._description,
-                'limited':''
+                'info': self._description,
+                'abstract':ABSTRACT,
+                'doc':DOC,
+                'limited':'',
+                'args':[{"id": "x", "name": "分析项x",'type':'dataframe', 'requirement':'每个元素必须包含在df的列中'}],
+                'extra_args':[ { 'id': "bins", 
+                                'default': 10,
+                                'name':"计算方法", 
+                                'type': "input",
+                                },
+                
+
+                            ]
                 }
 
 
     def run(self, 
             df,
-            bins = 10): 
+            x,
+            y,
+            extra_args={'bins':10}): 
         
-        self.bins = bins
+        self.bins = extra_args.get('bins')
         
-        
+        dfx = df[x]
         
         msg={}
         
@@ -93,9 +110,9 @@ class CountFreq(ModelBase):
             msg['warning'] = '列 %s 不是定类（category）数据, 将强制通过bins:%d为转化为定类型数据' %(numeric_cols, self.bins) 
         
         res = []
-        for col in df.columns:
+        for col in dfx.columns:
             if col in numeric_cols:
-                vc = df[col].value_counts(bins = self.bins)
+                vc = dfx[col].value_counts(bins = self.bins)
                 dfc = vc.to_frame(name = 'frequency')
                 dfc.index = dfc.index.map(str)
                 
@@ -103,7 +120,7 @@ class CountFreq(ModelBase):
                 dfc['percentage'] = dfc.frequency.apply(lambda x: x/_sum)
                 
             else:
-                vc = df[col].value_counts()
+                vc = dfx[col].value_counts()
                 dfc = vc.to_frame(name = 'frequency')
                 _sum = dfc.frequency.sum()
                 dfc['percentage'] = dfc.frequency.apply(lambda x: x/_sum).round(5)*100              
@@ -119,14 +136,18 @@ class CountFreq(ModelBase):
         df_res = pd.concat(res)
         
         df_res.columns = ['频数','占比(%)']
+
         
-        return {'result':df_res, 'msg':msg}
-        
-        
+        return {'tables':[{'table_json':df_res.reset_index().to_json(orient='index'),
+                           'table_html':df_res.to_html(),
+                          'table_info':'生成的字段之间的相关系数和p-值表',
+                          'chart':['heatmap','line','bar']}],
+                'conf':self.get_info(),
+                'msg':msg}, [{'table_df':df_res,'label':'生成的字段之间的相关系数和p-值表'}]
     
             
-            
-            
+conf = CountFreq().get_info()           
+           
 
 if __name__ == '__main__':
     
@@ -142,6 +163,3 @@ if __name__ == '__main__':
     #执行运算，传入df、bins参数, 返回一个字典
     res = c.run(df, bins = 10).get('result')
     res.to_excel('result.xlsx')
-    
-    
-    

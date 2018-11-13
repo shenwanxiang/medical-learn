@@ -6,14 +6,22 @@ Created on Sun Oct 14 14:04:31 2018
 @author: charleshen
 """
 
-from MedLearn.utils.pandastool import ParseDFtypes
-from MedLearn.utils.modelbase import ModelBase
-from MedLearn.dataset import load_MedExp
+import logging
+import os
 
+import coloredlogs
 import pandas as pd
-import coloredlogs,logging
+
+from ..dataset import load_MedExp
+from ..docs import common_doc
+from ..utils.modelbase import ModelBase
+from ..utils.pandastool import ParseDFtypes
+
 coloredlogs.install()
 
+filename = os.path.basename(__file__)
+ABSTRACT = '''相关分析用于研究定量数据之间的关系情况,包括是否有关系,以及关系紧密程度等.此分析方法通常用于回归分析之前;相关分析与回归分析的逻辑关系为:先有相关关系,才有可能有回归关系。'''
+DOC = common_doc.DOC(filename=filename)
 
 class GroupByStat(ModelBase):
 
@@ -54,30 +62,48 @@ class GroupByStat(ModelBase):
                  model_limiation = None,
                  ):
         
-        self._id_ = model_id
-        self._limitation_ = model_limiation
+        self._name_ = '分类汇总方法'
 
         
         
     def get_info(self):
         
-        return {'id': self._id, 
-                'name': self._name, 
-                'description': self._description,
-                'limited':self._limitation
+        return {'id': self._id,
+                'name': self._name,
+
+                'info': self._description,
+                'abstract': ABSTRACT,
+                'doc': DOC,
+                'limited': '如果方法为‘pearson’，需要输入的每列的数据都是数值型数据，不能是字符串或者object',
+                'args': [{"id": "x", "name": "分析项x", 'type': 'dataframe', 'requirement': '每个元素必须包含在df的列中'},
+                         ],
+
+                'extra_args': [{'id': "method",
+                                'default': 'count',
+                                'name': "汇总方式",
+                                'type': "select",
+                                'choice': [{'value': 'count', 'label': '汇总出现的个数'},
+                                           {'value': 'mean',
+                                               'label': '汇总平均数'},
+                                           {'value': 'sum', 'label': '汇总和'},
+                                           {'value':'std','label':'汇总标准差'}]
+                                }
+                               ]
                 }
+
     
     
     def run(self, 
             df, 
-            by,
-            method = 'count'): 
+            x,
+            y,
+            extra_args={'method':'count'}): 
 
-
+        by=x
         numer_cols, cate_cols = ParseDFtypes(df)
         
         msg = {}
-        
+        method = extra_args.get('method')
         
         if numer_cols == []:
             logging.error('All input DataFrame are no numeric columns, Please check your input data!')
@@ -102,8 +128,12 @@ class GroupByStat(ModelBase):
             else:
                 result = df.groupby(by).size().to_frame(name= '样本量')
             
-        return {'result':result, 'msg':msg}
-        
+        return {'tables': [{'table_json': result.reset_index().to_json(orient='index'),
+                            'table_html': result.to_html(),
+                            'table_info': '生成的字段之间的相关系数和p-值表',
+                            'chart': ['heatmap', 'line', 'bar']}],
+                'conf': self.get_info(),
+                'msg': msg}, [{'table_df': result, 'label': '生成的字段之间的相关系数和p-值表'}]
         
 
 if __name__ == '__main__':

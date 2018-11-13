@@ -30,22 +30,15 @@
     ----------        
         返回一个字典，带有‘result’关键字，其值为相关系数和p-value组成的dataframe
         
-## 公式如下：
-### 
-## $$ \rho = \frac{\text{cov}(X,Y)}{\sigma_x \sigma_y} $$
-
-### 相关系数r:
-## $$ r = \frac{{}\sum_{i=1}^{n} (x_i - \overline{x})(y_i - \overline{y})} 
-{\sqrt{\sum_{i=1}^{n} (x_i - \overline{x})^2(y_i - \overline{y})^2}}$$
-
-## 输入的参数说明和使用场景
-|系数|	使用场景|	备注|
-|:--|:--|:--|
-|Pearson|	定量数据，数据满足正态性时|	正态图可查看正态性，散点图展示数据关系|
-|Spearman|	定量数据，数据不满足正态性时|	散点图可查看正态性，散点图展示数据关系|
-|Kendall| 	定量数据一致性判断|	通常用于评分数据一致性水平研究【非关系研究】，比如评委打分，数据排名等。|
+## 一个表格
+### html 格式
+<table border="1" class="dataframe">  <thead>    <tr style="text-align: right;">      <th></th>      <th>med</th>      <th>lc</th>      <th>idp</th>      <th>lpi</th>      <th>fmde</th>      <th>physlim</th>      <th>ndisease</th>      <th>health</th>      <th>linc</th>      <th>lfam</th>      <th>educdec</th>      <th>age</th>      <th>sex</th>      <th>child</th>      <th>black</th>    </tr>  </thead>  <tbody>    <tr>      <th>1</th>      <td>62.07547</td>      <td>0.0</td>      <td>yes</td>      <td>6.907755</td>      <td>0.0</td>      <td>no</td>      <td>13.73189</td>      <td>good</td>      <td>9.528776</td>      <td>1.386294</td>      <td>12.0</td>      <td>43.87748</td>      <td>male</td>      <td>no</td>      <td>no</td>    </tr>    <tr>      <th>2</th>      <td>0.00000</td>      <td>0.0</td>      <td>yes</td>      <td>6.907755</td>      <td>0.0</td>      <td>no</td>      <td>13.73189</td>      <td>excellent</td>      <td>9.528776</td>      <td>1.386294</td>      <td>12.0</td>      <td>17.59138</td>      <td>male</td>      <td>yes</td>      <td>no</td>    </tr>    <tr>      <th>3</th>      <td>27.76280</td>      <td>0.0</td>      <td>yes</td>      <td>6.907755</td>      <td>0.0</td>      <td>no</td>      <td>13.73189</td>      <td>excellent</td>      <td>9.528776</td>      <td>1.386294</td>      <td>12.0</td>      <td>15.49966</td>      <td>female</td>      <td>yes</td>      <td>no</td>    </tr>  </tbody></table>
+### md格式
+|    | med    | lc   | idp   | lpi   | fmde   | physlim   | ndisease   | health    | linc   | lfam   | educdec   | age    | sex    | child   | black   |
+|:---|:-------|:-----|:------|:------|:-------|:----------|:-----------|:----------|:-------|:-------|:----------|:-------|:-------|:--------|:--------|
+| 1  | 62.075 | 0.0  | yes   | 6.908 | 0.0    | no        | 13.732     | good      | 9.529  | 1.386  | 12.0      | 43.877 | male   | no      | no      |
+| 2  | 0.0    | 0.0  | yes   | 6.908 | 0.0    | no        | 13.732     | excellent | 9.529  | 1.386  | 12.0      | 17.591 | male   | yes     | no      |
+| 3  | 27.763 | 0.0  | yes   | 6.908 | 0.0    | no        | 13.732     | excellent | 9.529  | 1.386  | 12.0      | 15.5   | female | yes     | no      |
 
 ## 一张照片
 ![我的照片](https://ss0.bdstatic.com/70cFuHSh_Q1YnxGkpoWK1HF6hhy/it/u=2791261768,1320060678&fm=26&gp=0.jpg)
-
-
