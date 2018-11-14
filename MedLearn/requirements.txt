@@ -1,4 +1,0 @@
-researchpy
-coloredlogs
-statsmodels
-factor_analyzer
