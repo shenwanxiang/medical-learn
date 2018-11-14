@@ -34,16 +34,16 @@
 
 2.advance模块：
 
-    2.1 K-均值聚类：advance_Cluster  
-    2.2 因子:advance_FA
-    2.3 主成分:advance:PCA
-    2.4 事后检验:advance_PostHocTest
-    2.5 逐步回归:advance_StepwiseReg
-    2.6 分层回归: advance_HierarchicalReg
-    2.7 双因素方差: advance_TwowayAnova
-    2.8 二元Logit分析: advance_BinLogReg
-    2.9 多分类Logit分析: 未做
-    2.10 岭回归分析: 未做
+    2.1 K-均值聚类：advance_a_Cluster  
+    2.2 因子:advance_b_FA
+    2.3 主成分:advance_c_PCA
+    2.4 事后检验:advance_d_PostHocTest
+    2.5 逐步回归:advance_e_StepwiseReg
+    2.6 分层回归: advance_f_HierarchicalReg
+    2.7 双因素方差: advance_g_TwowayAnova
+    2.8 二元Logit分析: advance_h_BinLogReg
+    2.9 多分类Logit分析: advance_i_MultiLogReg
+    2.10 岭回归分析: advance_j_RingeReg
 
 3.special模块：
 

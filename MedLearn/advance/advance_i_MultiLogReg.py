@@ -12,10 +12,9 @@ sys.path.insert(0,'/Users/shenwanxiang/Desktop/smap/medical-learn/')
 from MedLearn.utils.pandastool import ParseDFtypes,isCategory
 from MedLearn.utils.modelbase import ModelBase
 from MedLearn.dataset import load_MedExp
+
+
 from MedLearn.docs import getDoc
-
-import statsmodels.formula.api as smf
-
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import roc_curve, auc
@@ -39,7 +38,7 @@ ABSTRACT = '''二元Logit回归分析用于研究X对于Y的影响关系，其�
 
 
 
-class advance_BinLogReg(ModelBase):
+class advance_MultiLogReg(ModelBase):
 
     """
     
@@ -127,107 +126,126 @@ class advance_BinLogReg(ModelBase):
         dfx = df[x].reset_index(drop=True)
         dfx = sm.add_constant(dfx, prepend=True)
         dfx = dfx.rename(columns={'const':'截距'})
+        
         numeric_cols,category_cols = ParseDFtypes(dfx)
-
+        
         target = y[0]
         tsy= df[target].reset_index(drop=True)
-
-        #convert dict
-        myd={}
-        myd_reverse={}
-        lst = list(tsy.unique())
-        for i,j in enumerate(lst):
-            myd[j]=i
-            myd_reverse[i]=j
-
-
+        
+        
+        types = list(tsy.unique())
+        types.sort()
+        
+        
+        
         # build init model
-        model = sm.Logit(tsy.map(myd), dfx[numeric_cols])
-        res = model.fit(method='bfgs')
-
-        #predict result
+        model = sm.MNLogit(tsy, dfx[numeric_cols])
+        res = model.fit()
+        
+        
+        #predict result        
         prediction_probs = res.predict()
-        prediction_bins = pd.Series([1 if i >= 0.5 else 0 for i in prediction_probs],name='predicted_bins')
-        tsy_predict = prediction_bins.map(myd_reverse)
+        tsy_predict = pd.DataFrame(prediction_probs).apply(lambda x: types[x.idxmax()],axis=1)
         tsy_predict.name = '预测的' + tsy.name
         df_predict_result = pd.concat([tsy,tsy_predict],axis=1)
-
-
-        #confusion matrix
-        df_confusion_matrix = pd.DataFrame(confusion_matrix(tsy, tsy_predict),index = tsy.unique(),columns = tsy.unique())
-
-
+        df_dumps = pd.get_dummies(tsy)[types]
+        df_prediction_probs = pd.DataFrame(prediction_probs,columns=types)
+        #fpr, tpr, thresholds =roc_curve(tsy.map(myd), prediction_probs)        
+        
         #report
         df_report = pd.DataFrame(list(precision_recall_fscore_support(tsy, 
                                                                       tsy_predict)),
-                    index=['精确度', '召回率', 'F1-值', '样本个数']).T.round(5)
-
-        df_report.index = df_report.index.map(myd_reverse)
-
+                                 index=['召回率','精确度',  'F1-值', '样本个数'],
+                                columns=types).T.round(5)
+        
+        
+        #confusion matrix
+        df_confusion_matrix = pd.DataFrame(res.pred_table(),index = types,columns = types)
+        
+        
+        
         #roc
-        fpr, tpr, thresholds =roc_curve(tsy.map(myd), prediction_probs)
-        roc_auc = auc(fpr, tpr)
-        logging.info("Area under the ROC curve : %f" % roc_auc)
-        i = np.arange(len(tpr)) # index for df
-        df_roc = pd.DataFrame({'假阳性率' : pd.Series(fpr, index=i),
-                               '真阳性率' : pd.Series(tpr, index = i)})
-
-
-
+        roc_res_dict = {}
+        for i in types:
+            fpr, tpr, thresholds =roc_curve(df_dumps[i], df_prediction_probs[i])
+            tpr = pd.DataFrame(tpr, columns=['真阳性率'])
+            fpr = pd.DataFrame(fpr, columns=['假阳性率'])
+            
+            roc_auc = auc(fpr, tpr)
+            desc = "（曲线下面积:%0.3f）" % roc_auc
+            key = '%s_%s' % (i, desc)
+            r = fpr.join(tpr).T.reset_index()
+            roc_res_dict[key] = r
+        
+        
+        
         #model description
         tables = res.summary().tables
         df_list = [pd.read_html(StringIO(t.as_html()))[0] for t in tables ]
         dfinfo1 = df_list[1].fillna('Variables').set_index(0)
-        dfinfo1 = dfinfo1.T.set_index('Variables').T
-        dfinfo1.index.name = '项'
-        dfinfo1.columns.name = '参数类型'
-        dfinfo1.columns = ['回归系数', '标准误差','Z值','p值', '95%CI(下限)','95%CI(上限)']
-        dfinfo1['or值'] = np.exp(res.params)
-        df_description  = dfinfo1
-
-
+        t = []
+        for i in res.params.columns:
+            odd = np.exp(res.params[[i]]).round(5)
+            odd.columns=['or值']
+            odd = odd.T.reset_index().T
+            t.append(odd)
+        dft = pd.concat(t)
+        dft.index = dfinfo1.index
+        dft.columns = [7]
+        df_res = dfinfo1.reset_index().join(dft.reset_index(drop=True))
+        df_res = df_res.set_index(0)
+        change_lst = list(set(dfinfo1.index) - set(dfx.columns))
+        for i in change_lst:
+            df_res.loc[i] = ['回归系数', '标准误差','Z值','p值', '95%CI(下限)','95%CI(上限)','or值']
+            
+        
+        
         df_report = df_report.append(df_report.sum().to_frame(name='总和/平均').T)
         df_report['召回率'].loc['总和/平均'] = df_report['召回率'].loc['总和/平均']/2
         df_report['F1-值'].loc['总和/平均'] = df_report['F1-值'].loc['总和/平均']/2
         df_report = df_report.T
         df_report['name'] = ['模型效果','模型效果','模型效果','样本量']
-
-
+        
+        
         df_confusion_matrix = df_confusion_matrix.append(df_confusion_matrix.sum().to_frame(name='总和/平均').T)
         df_confusion_matrix = df_confusion_matrix.T
-        df_confusion_matrix['name'] = ['混淆矩阵','混淆矩阵']
+        df_confusion_matrix['name'] = '混淆矩阵'
         df_confusion_matrix = df_confusion_matrix.append(df_report).reset_index().set_index(['name','index'])
         df_confusion_matrix = df_confusion_matrix.T
         df_confusion_matrix.columns.names=[None, None]
-
-
+        
+        
         df_predict_result = df_predict_result.round(5)
         df_confusion_matrix = df_confusion_matrix.round(5)
-        df_roc = df_roc.round(5)
-        df_description = df_description.round(5)
-
         
-        #self._debug = df_confusion_matrix
+        df_description = df_res.round(5)
+
+        tt = []
+        for i in roc_res_dict.keys():
+            df = roc_res_dict[i]
+            d = {'table_info':i,'table_json':df.to_json(),
+             'table_html':df.to_html(), 'chart':['scatter']} 
+            
+            tt.append(d)
+            
+            
+        #self.df_confusion_matrix = df_confusion_matrix
+        #self._df_description = df_description
         return {'tables':[
-                        {'table_info':'二元Logit回归分析结果汇总',
-                        'table_json':df_description.to_json(),
+                        {'table_info':'多元Logit回归分析结果汇总',
+                        'table_json':df_description.reset_index().to_json(),
                         'table_html':df_description.to_html(),
                         'chart':['line','bar']},
-                        {'table_info':'二元Logit回归预测效果汇总:',
+                        {'table_info':'多元Logit回归预测效果汇总:',
                         'table_json':df_confusion_matrix.T.reset_index().to_json(),
                         'table_html':df_confusion_matrix.to_html(),
-                        'chart':[]},                    
-                        {'table_info':"ROC曲线（曲线下面积:%0.3f）" % roc_auc,
-                        'table_json':df_roc.to_json(),
-                        'table_html':df_roc.to_html(),
-                        'chart':['scatter']},                              
-                        ],
+                        'chart':[]}] + tt,
                 'conf':self.get_info(),
                 'msg':msg}, [{'table_df':df_predict_result,'label':'实际值与预测值'}]
         
         
         
-conf =  advance_BinLogReg().get_info()
+conf =  advance_MultiLogReg().get_info()
 
 
 if __name__ == '__main__':
@@ -237,11 +255,11 @@ if __name__ == '__main__':
     df = load_MedExp()
     x = ['med', 'lc', 'lpi', 'fmde', 'ndisease', 'linc', 'lfam', 'educdec','age']
     #因为二元Logit分析，要求输入的y为2分类的数据，所以y可以分为两种情况0，1的时候适用
-    y = ['child']
+    y = ['health']
 
     #类的初始化
 
-    C = advance_BinLogReg()
+    C = advance_MultiLogReg()
     #打印该类描述的信息
     print(conf)
     
