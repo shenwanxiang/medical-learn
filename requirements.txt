@@ -2,3 +2,4 @@ coloredlogs
 statsmodels
 factor_analyzer
 Markdown
+tqdm
