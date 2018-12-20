@@ -8,6 +8,7 @@ Created on Sat Oct 13 18:32:15 2018
  
 __all__ = ["dataset", "utils","common","advance","special"]
 
+'''
 from .common import CountFreq
 from .common import ChiSquareCrossTab
 from .common import DescripStat
@@ -21,3 +22,4 @@ from .common import TTestPair
 from .common import NormalityTest
 from .common import NonparametricStat
 from .common import HOVTest
+'''

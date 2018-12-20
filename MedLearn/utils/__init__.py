@@ -6,7 +6,7 @@ Created on Sat Oct 13 17:22:13 2018
 @author: charleshen
 """
 
-__all__ = ["modelbase", "pandastool, runtools, logtools"]
+__all__ = ["modelbase", "pandastool, runtools, logtools, crosstab, ttest"]
 
 
 from .logtools import pbar, print_info, print_error, print_warn, print_debug
