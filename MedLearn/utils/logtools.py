@@ -22,8 +22,8 @@ formatter = ColoredFormatter(
     style='%',
     )
 
-logger = logging.getLogger('MedLearn')
-all_loggers = [ logger, logging.getLogger('rrun'), logging.getLogger('Pyro4') ]
+logger = logging.getLogger('Medlearn')
+all_loggers = [ logger]
 def set_level(level):
     for _logger in all_loggers:
         _logger.setLevel(getattr(logging, level.upper()))

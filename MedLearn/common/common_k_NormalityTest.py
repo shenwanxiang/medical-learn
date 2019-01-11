@@ -24,8 +24,6 @@ Created on Thu Oct 18 23:29:10 2018
 
 
 
-
-
 import logging
 import os
 

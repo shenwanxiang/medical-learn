@@ -47,18 +47,19 @@
 
 3.special模块：
 
-    3.1 卡方检验: 未做
-    3.2 Kappa一致性检验: 未做
-    3.3 二元Probit回归分析: 未做
-    3.4 Poisson回归分析: 未做
-    3.5 多因素方差分析: 未做
+    3.1 卡方检验: special_a_ChiSquaredTest
+    3.2 Kappa一致性检验: special_b_KappaTest
+    3.3 二元Probit回归分析: special_c_Probit
+    3.4 Poisson回归分析:  special_d_Poisson
+    3.5 多因素方差分析:  special_e_MultiVariance
     
     
     
 4.额外的模块（可以预测输入的结果，分割训练、测试集）：
 
     4.1: 层次聚类法
-    4.2: 聚类热图分析（效果：http://genomicsclass.github.io/book/pages/figure/clustering_and_heatmaps-heatmap.2-1.png） 
+    4.2: 聚类热图分析
+   ![image](http://genomicsclass.github.io/book/pages/figure/clustering_and_heatmaps-heatmap.2-1.png)
     4.3: DBSCAN(基于密度聚类)
     
     

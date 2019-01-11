@@ -114,8 +114,13 @@ class RidgeLogReg(ModelBase):
     
     
         
-    def run(self, df, x, y, *args):
+    def run(self, df, x, y, extra_args = {'alpha':0.001}):
 
+        
+        alpha = extra_args.get('alpha')
+        if not alpha:
+            alpha = 0.001
+            
         '''
         
         x:
@@ -146,7 +151,7 @@ class RidgeLogReg(ModelBase):
         
         model = smf.OLS(tsy.map(myd), dfx[numeric_cols])
         res = model.fit_regularized(maxiter = 1000,
-                                    alpha = 0.01, #正则化系数
+                                    alpha = alpha, #正则化系数
                                     L1_wt=0) #L1_wt 0为l2 loss, 1为l1 loss
 
         #predict result
@@ -213,11 +218,11 @@ class RidgeLogReg(ModelBase):
         
         #self._debug = df_confusion_matrix
         return {'tables':[
-                        {'table_info':'二元Logit回归分析结果汇总',
+                        {'table_info':'Ringe回归分析结果汇总',
                         'table_json':df_description.to_json(),
                         'table_html':df_description.to_html(),
                         'chart':['line','bar']},
-                        {'table_info':'二元Logit回归预测效果汇总:',
+                        {'table_info':'Ringe回归预测效果汇总:',
                         'table_json':df_confusion_matrix.T.reset_index().to_json(),
                         'table_html':df_confusion_matrix.to_html(),
                         'chart':[]},                    
@@ -240,7 +245,7 @@ if __name__ == '__main__':
 
     df = load_MedExp()
     x = ['med', 'lc', 'lpi', 'fmde', 'ndisease', 'linc', 'lfam', 'educdec','age']
-    #因为二元Logit分析，要求输入的y为2分类的数据，所以y可以分为两种情况0，1的时候适用
+    
     y = ['child']
 
     #类的初始化
