@@ -9,25 +9,87 @@ Chi-square test
 """
 
 
-import logging
+import sys
+sys.path.insert(0,'/home/shenwanxiang/wuhan_software/medical-learn') #改成你的路径
+
 import os
-
-import coloredlogs
 import pandas as pd
-# import researchpy as rp
-
-from ..dataset import load_MedExp
-from ..utils.modelbase import ModelBase
-from ..utils.pandastool import isCategory, isSeries
-from ..docs import common_doc
-from ..utils import crosstab
+import scipy.stats as stats
+import numpy as np
 
 
-coloredlogs.install()
+from MedLearn.dataset import load_MedExp
+from MedLearn.utils.modelbase import ModelBase
+from MedLearn.utils.pandastool import isCategory, isSeries
+from MedLearn.docs import common_doc
+from MedLearn.utils import logtools
 
-filename = os.path.basename(__file__)
-ABSTRACT = '''相关分析用于研究定量数据之间的关系情况,包括是否有关系,以及关系紧密程度等.此分析方法通常用于回归分析之前;相关分析与回归分析的逻辑关系为:先有相关关系,才有可能有回归关系。'''
+#filename = os.path.basename(__file__)
+filename = 'special_a_ChiSquaredTest.py'
+ABSTRACT = '''卡方检验用于分析定类数据与定类数据之间的关系情况.例如不同减肥治疗方式对于减肥的帮助情况（胆固醇水平）。'''
 DOC = common_doc.DOC(filename=filename)
+
+
+
+def core(tsx,tsy,method = 'pearson'):
+
+    
+    '''
+    input
+    --------
+      tsx: 定类型数据
+      tsy: 定类型数据
+      method: 方法，下拉菜单
+    '''
+
+    methods = {"pearson":"Pearson卡方检验", 
+               "freeman-tukey":"Freeman-Tukey卡方检验" , 
+               "log-likelihood":"最大似然卡方[G-test](https://en.wikipedia.org/wiki/G-test)", 
+               "neyman":"Neyman卡方检验" , 
+              "fisher":"fisher精确卡方检验"}
+
+    crosstab = pd.crosstab(tsx, tsy)
+    crosstab2 = pd.crosstab(tsx, tsy,margins = True)
+    crosstab2 = crosstab2.rename(columns={'All':'总计'}, index={'All':'总计'})
+    
+    msg = {}
+    
+    if not isCategory(tsx):
+        msg['error'] = '输入的%s不是类别型数据（category data)\n' % tsx.name
+        return pd.DataFrame(), msg
+        
+    if not isCategory(tsy):
+        msg['error'] = '输入的%s不是类别型数据(category data)\n' % tsy.name
+        return pd.DataFrame(),msg
+        
+    if method not in methods.keys():    
+        logtools.print_error('不支持的方法:%s，只支持以下方法：%s' % (method, list(methods.keys()) ))
+        
+    if method == "fisher":
+        odd_rates, p = stats.fisher_exact(crosstab)
+        expected = stats.contingency.expected_freq(crosstab)
+        chi2 = '--'
+        
+    else:
+        chi2, p, dof, expected = stats.chi2_contingency(crosstab, lambda_ = method)   
+
+    dfe = pd.DataFrame(expected,columns=tsy.unique(),index=tsx.unique()).round(3)
+    dfte = crosstab.astype(str) +' (' +  dfe.astype(str) + ')'
+    dfte['总计'] =  crosstab2['总计']
+    dfte.loc['总计'] = crosstab2.loc['总计'] 
+    dfte['检验方法'] = method
+    dfte['卡方统计量'] = chi2
+    dfte['p-值'] = p
+    dfte.index.name = '类别'
+    return dfte.reset_index().set_index(['检验方法','卡方统计量','p-值','类别']), msg
+
+
+
+#df = load_MedExp()
+#tsx = df.black
+#tsy = df.health
+#core(tsx,tsy)[0]    
+
 
 
 class ChiSquareCrossTab(ModelBase):
@@ -105,49 +167,37 @@ class ChiSquareCrossTab(ModelBase):
         xl = len(tsx)
         yl = len(tsy)
         if xl != yl:
-            logging.error(
-                'the length of input X:%s is not equal the length of Y: %s ! ' % (xl, yl))
-            msg['error'] = '输入的tsx的长度为:%s 不等于输入的tsy的长度: %s ! ' % (xl, yl)
+            msg['error'] = '输入的tsx的长度为:%s 不等于输入的tsy的长度: %s !\n ' % (xl, yl)
             return {'result': pd.DataFrame(), 'msg': msg}
 
         self.bins = extra_args.get('bins')
         if not isSeries(tsy) & isSeries(tsx):
-            logging.error('X or y data are not a pandas Series type!')
-
-            msg['error'] = 'tsx或者tsy不是 pandas Series 数据类型!'
+            msg['error'] = 'tsx或者tsy不是 pandas Series 数据类型!\n'
             return {'result': pd.DataFrame(), 'msg': msg}
 
         else:
             if not isCategory(tsy):
                 tsy = pd.cut(tsy, bins=self.bins)
-                logging.warning(
-                    'the Series tsy is not category type, will be convert to category type by bins of %d' % self.bins)
-                msg['warning'] = '列tsy不是定类（category）数据, 将强制通过bins:%d为转化为定类型数据' % self.bins
+                msg['warning'] = '列tsy不是定类（category）数据, 将强制通过bins:%d为转化为定类型数据\n' % self.bins
 
             if not isCategory(tsx):
-                tsx = pd.cut(tsx, bins=bins)
-                logging.warning(
-                    'the Series tsx is not category type, will be convert to category type by bins of %d' % self.bins)
-
+                tsx = pd.cut(tsx, bins=self.bins)
                 if msg.get('warning'):
-
-                    msg['warning'] = msg['warning'] + \
-                        '列tsx不是定类（category）数据, 将强制通过bins:%d为转化为定类型数据' % self.bins
-
+                    msg['warning'] = msg['warning'] + '列tsx不是定类（category）数据, 将强制通过bins:%d为转化为定类型数据\n' % self.bins
                 else:
-                    msg['warning'] = 't列tsx不是定类（category）数据, 将强制通过bins:%d为转化为定类型数据' % self.bins
+                    msg['warning'] = 't列tsx不是定类（category）数据, 将强制通过bins:%d为转化为定类型数据\n' % self.bins
 
-            table, results = crosstab(tsx,
-                                         tsy,
-                                         prop='col',
-                                         test='chi-square')
 
+            dfres, msg1 = core(tsx,tsy, method)
+            
+            msg =  {**msg, **msg1}
+            
             return {'tables': [{'table_json': dfres.T.reset_index().to_json(orient='index'),
                                 'table_html': dfres.to_html(),
-                                'table_info': '生成的字段之间的相关系数和p-值表',
+                                'table_info': '卡方检验分析结果',
                                 'chart': ['heatmap', 'line', 'bar']}],
                     'conf': self.get_info(),
-                    'msg': msg}, [{'table_df': dfres, 'label': '生成的字段之间的相关系数和p-值表'}]
+                    'msg': msg}, [{'table_df': dfres, 'label': '卡方检验分析结果'}]
 
 
 if __name__ == '__main__':
